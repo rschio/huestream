@@ -24,7 +24,7 @@ func Example() {
 	}
 
 	// If you don't have an entertainment area yet, create it using the
-	// Phillips Hue App:
+	// Philips Hue App:
 	// Settings > Entertainment areas > +.
 	//
 	// Use this command to get the ID of your first entertainment area,
