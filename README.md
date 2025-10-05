@@ -13,8 +13,6 @@ import (
 	"image/color"
 	"log"
 	"math/rand/v2"
-	"os"
-	"os/signal"
 	"time"
 
 	"github.com/amimof/huego"
@@ -45,16 +43,12 @@ func Example() {
 	// Yes, I'm too lazy to write this function.
 	areaID := ""
 
-	// Create a context that listens to signals so we can gracefully shutdown the
-	// stream.
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
-	defer stop()
-
-	// Create the stream client.
-	client := huestream.New(host, username, clientKey)
+	// Create a context with timeout so the stream will finish in 5s.
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 
 	// Start a stream in the selected Entertainment area.
-	stream, err := client.StartStream(ctx, areaID)
+	stream, err := huestream.Start(ctx, host, username, clientKey, areaID)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -69,17 +63,15 @@ func Example() {
 	// streaming rate of 50-60Hz is used."
 	//
 	// 50 Hz = 1 message each 20 ms.
-	sendRate := time.NewTicker(20 * time.Millisecond)
-	defer sendRate.Stop()
+	sendRate := time.Tick(time.Second / 50)
 
 	// From Hue Docs:
 	// "The bridge sends maximum at 25 Hz messages over ZigBee.
 	// Thus, the (fastest) effect rate should be 2 – 3 times slower
 	// than this 25 Hz, i.e < 12.5 Hz."
 	//
-	// 12.5 Hz = 1 message each 80 ms.
-	changeColorRate := time.NewTicker(80 * time.Millisecond)
-	defer changeColorRate.Stop()
+	// 10 Hz = 1 message each 100 ms.
+	changeColorRate := time.Tick(time.Second / 10)
 
 	c0, c1 := randColor(), randColor()
 	for {
@@ -91,10 +83,10 @@ func Example() {
 		case err := <-stream.Error:
 			log.Println(err)
 
-		case <-changeColorRate.C:
+		case <-changeColorRate:
 			c0, c1 = randColor(), randColor()
 
-		case <-sendRate.C:
+		case <-sendRate:
 			// Here we are sending two colors because my Entertainment Area has 2 lights.
 			// The slice index represents the Channel ID (the light).
 			// If you have 5 lights in your area, send a slice of 5 colors.
