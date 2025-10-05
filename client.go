@@ -1,6 +1,7 @@
 package huestream
 
 import (
+	"cmp"
 	"context"
 	"crypto/tls"
 	"encoding/binary"
@@ -63,6 +64,8 @@ type Stream struct {
 
 	conn   *dtls.Conn
 	areaID string
+
+	client *Client
 }
 
 // Close closes the connection, also closes the Send and Error channels.
@@ -72,7 +75,10 @@ func (s *Stream) Close() error {
 	s.once.Do(func() {
 		close(s.Send)
 		<-s.done
+		// TODO: refactor stopStream.
+		errStop := s.client.stopStream(context.Background(), s.areaID)
 		err = s.conn.Close()
+		err = cmp.Or(errStop, err)
 	})
 
 	return err
@@ -99,6 +105,7 @@ func (c *Client) StartStream(ctx context.Context, areaID string) (*Stream, error
 		done:   done,
 		conn:   conn,
 		areaID: areaID,
+		client: c,
 	}
 
 	go func() {
@@ -126,9 +133,9 @@ func (c *Client) baseURL() string {
 	return fmt.Sprintf("https://%s/clip/v2/resource/entertainment_configuration", c.host)
 }
 
-func (c *Client) startStream(ctx context.Context, areaID string) error {
+func (c *Client) streamAction(ctx context.Context, areaID, action string) error {
 	url := c.baseURL() + "/" + areaID
-	data := strings.NewReader(`{"action":"start"}`)
+	data := strings.NewReader(fmt.Sprintf(`{"action":%q}`, action))
 	req, err := http.NewRequestWithContext(ctx, "PUT", url, data)
 	if err != nil {
 		return err
@@ -146,6 +153,14 @@ func (c *Client) startStream(ctx context.Context, areaID string) error {
 	}
 
 	return nil
+}
+
+func (c *Client) startStream(ctx context.Context, areaID string) error {
+	return c.streamAction(ctx, areaID, "start")
+}
+
+func (c *Client) stopStream(ctx context.Context, areaID string) error {
+	return c.streamAction(ctx, areaID, "stop")
 }
 
 func (c *Client) handshakeUDP(ctx context.Context) (*dtls.Conn, error) {
