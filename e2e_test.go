@@ -31,8 +31,7 @@ func testE2E(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 
-	hue := huestream.New(bridgeHost, username, clientKey)
-	stream, err := hue.StartStream(ctx, areaID)
+	stream, err := huestream.Start(ctx, bridgeHost, username, clientKey, areaID)
 	if err != nil {
 		t.Fatalf("hue.StartStream: %v", err)
 	}

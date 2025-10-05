@@ -17,6 +17,11 @@ import (
 	"github.com/pion/dtls/v3"
 )
 
+func Start(ctx context.Context, host, username, clientKey, areaID string) (*Stream, error) {
+	c := New(host, username, clientKey)
+	return c.StartStream(ctx, areaID)
+}
+
 // Client is used to initiate a Stream.
 type Client struct {
 	http *http.Client
