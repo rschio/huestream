@@ -71,18 +71,20 @@ func Example() {
 		case <-ctx.Done():
 			return
 
-		// Log the errors.
-		case err := <-stream.Error:
-			log.Println(err)
-
 		case <-changeColorRate:
 			c0, c1 = randColor(), randColor()
 
 		case <-sendRate:
 			// Here we are sending two colors because my Entertainment Area has 2 lights.
-			// The slice index represents the Channel ID (the light).
-			// If you have 5 lights in your area, send a slice of 5 colors.
-			stream.Send <- []color.Color{c0, c1}
+			// The int represents the Channel ID (the light).
+			// If you have 5 lights in your area, send a map of 5 colors.
+			IDColors := map[int]color.Color{
+				0: c0,
+				1: c1,
+			}
+			if err := stream.Send(IDColors); err != nil {
+				log.Println(err)
+			}
 		}
 	}
 
